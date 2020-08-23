@@ -5,12 +5,16 @@ import io.ktor.application.ApplicationCall
 import io.ktor.client.request.get
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.readBytes
+import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.ByteArrayContent
 import io.ktor.http.isSuccess
 import io.ktor.request.queryString
 import io.ktor.request.uri
+import io.ktor.response.respond
 import io.ktor.response.respondBytes
 import io.ktor.response.respondFile
+import io.ktor.response.respondText
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -42,6 +46,10 @@ class CachedProxy {
      * */
     private val downloadTasks = ConcurrentHashMap<String, Deferred<ByteArrayContent>>()
 
+    suspend fun taskNum(call: ApplicationCall){
+        call.respondText(downloadTasks.size.toString(), ContentType.Text.Plain, HttpStatusCode.OK)
+    }
+
     suspend fun doProxy(call: ApplicationCall) {
         val url = call.request.queryParameters["url"]
 
@@ -52,11 +60,7 @@ class CachedProxy {
         val queryStr: String = call.request.queryString()
         val valid: Boolean = Pattern.matches(reg, queryStr)
         if (!valid) {
-            log.warn(
-                "not match reg (url=http(s)?://(mmbiz|mmsns)\\.(qpic|qlogo)\\.cn/.+?), RequestURL:{}, {} ",
-                call.request.uri,
-                queryStr
-            )
+            log.warn("not match reg RequestURL:{}, {} ", call.request.uri, queryStr)
             throw HttpBadRequestException("not support url")
         }
 
@@ -102,22 +106,22 @@ class CachedProxy {
             if (!fileDir.exists()) fileDir.mkdirs()
 
             val deferred = async {
-
                 val response: HttpResponse = client.get(url)
 
                 if (!response.status.isSuccess()) {
                     log.info("download fail: $url")
-                    throw HttpClientException(response)
-                }
-
-                val content = ByteArrayContent(response.readBytes())
-
-                launch {
-                    val file = File(absoluteFilename)
-                    file.writeBytes(content.bytes())
                     downloadTasks.remove(url)
+                    throw HttpClientException(response)
+                }else{
+                    val content = ByteArrayContent(response.readBytes())
+
+                    launch {
+                        val file = File(absoluteFilename)
+                        file.writeBytes(content.bytes())
+                        downloadTasks.remove(url)
+                    }
+                    content
                 }
-                content
             }
 
             downloadTasks[url] = deferred

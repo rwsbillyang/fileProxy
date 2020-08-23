@@ -103,6 +103,9 @@ fun Application.module(testing: Boolean = false) {
         get("/px/img") {
             cachedProxy.doProxy(call)
         }
+        get("/px/taskNum") {
+            cachedProxy.taskNum(call)
+        }
         get("/px/health") {
             call.respondText("OK from proxy")
         }
