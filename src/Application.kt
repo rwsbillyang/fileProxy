@@ -65,7 +65,7 @@ val client = HttpClient(Apache) {
 }
 
 
-//https://github.com/ktorio/ktor-exercises/blob/master/solutions/exercise3/src/main/kotlin/Main.kt
+//https://github.com/ktorio/ktor-samples/blob/master/generic/samples/reverse-proxy/src/ReverseProxyApplication.kt
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
 
 val cachedProxy = CachedProxy()
