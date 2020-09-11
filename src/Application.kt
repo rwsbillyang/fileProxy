@@ -73,13 +73,9 @@ val cachedProxy = CachedProxy()
 @Suppress("unused") // Referenced in application.conf
 @kotlin.jvm.JvmOverloads
 fun Application.module(testing: Boolean = false) {
-    install(ConditionalHeaders)
+   // install(ConditionalHeaders)
 
-    install(CachingHeaders) {
-        options {
-            CachingOptions(CacheControl.MaxAge(maxAgeSeconds = 24 * 60 * 60 * 90), expires = null as? GMTDate?)
-        }
-    }
+
 
     install(ForwardedHeaderSupport) // WARNING: for security, do not include this if not behind a reverse proxy
     install(XForwardedHeaderSupport) // WARNING: for security, do not include this if not behind a reverse proxy
@@ -106,7 +102,7 @@ fun Application.module(testing: Boolean = false) {
         get("/px/taskNum") {
             cachedProxy.taskNum(call)
         }
-        get("/px/health") {
+        get("/") {
             call.respondText("OK from proxy")
         }
     }
