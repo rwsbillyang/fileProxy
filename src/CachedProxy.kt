@@ -1,20 +1,13 @@
 package com.github.rwsbillyang.fileProxy
 
 
-import io.ktor.application.ApplicationCall
-import io.ktor.client.request.get
-import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.readBytes
-import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.content.ByteArrayContent
-import io.ktor.http.isSuccess
-import io.ktor.request.queryString
-import io.ktor.request.uri
-import io.ktor.response.respond
-import io.ktor.response.respondBytes
-import io.ktor.response.respondFile
-import io.ktor.response.respondText
+import io.ktor.application.*
+import io.ktor.client.request.*
+import io.ktor.client.statement.*
+import io.ktor.http.*
+import io.ktor.http.content.*
+import io.ktor.request.*
+import io.ktor.response.*
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -38,9 +31,10 @@ class CachedProxy {
 
     private val log = LoggerFactory.getLogger("FileRelay")
 
-
-    private val reg = "url=http(s)?://(mmbiz|mmsns)\\.(qpic|qlogo)\\.cn/.+?"
-
+    //https://mp.weixin.qq.com/s/4HBgFyxQr3Fyzam5CjLmkw http://puui.qpic.cn/vpic/0/q3160lrh9sg.png/0
+    //https://mp.weixin.qq.com/s/GShHXGJDzAtw0VNQTVzjyQ https://vpic.video.qq.com/9492804/l0669n6emgf.png
+    private val reg = "url=http(s)?://.*\\.(qpic|qlogo|qq)\\.(cn|com)/.+?"
+    //private val reg = "url=http(s)?://(mmbiz|mmsns)\\.(qpic|qlogo)\\.cn/.+?"
     /**
      * 下载时可能是并发，只有第一个到达的请求才会去真正下载
      * */

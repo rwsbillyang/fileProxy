@@ -20,7 +20,9 @@ version '1.0.0'
 mainClassName = "io.ktor.server.netty.EngineMain"
 
 shadowJar {
-    minimize()
+//    minimize {
+//        exclude(dependency('ch.qos.logback:.*:.*'))
+//    }
     manifest {
         attributes 'Main-Class': mainClassName
     }

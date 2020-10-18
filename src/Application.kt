@@ -1,20 +1,13 @@
 package com.github.rwsbillyang.fileProxy
 
-import io.ktor.application.Application
-import io.ktor.application.call
-import io.ktor.application.install
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.apache.Apache
-import io.ktor.client.statement.HttpResponse
+import io.ktor.application.*
+import io.ktor.client.*
+import io.ktor.client.engine.apache.*
+import io.ktor.client.statement.*
 import io.ktor.features.*
-import io.ktor.http.CacheControl
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.content.CachingOptions
-import io.ktor.response.respond
-import io.ktor.response.respondText
-import io.ktor.routing.get
-import io.ktor.routing.routing
-import io.ktor.util.date.GMTDate
+import io.ktor.http.*
+import io.ktor.response.*
+import io.ktor.routing.*
 import java.io.IOException
 
 val client = HttpClient(Apache) {
