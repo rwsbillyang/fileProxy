@@ -44,10 +44,11 @@ val client = HttpClient(Apache) {
             // setProxy(HttpHost("127.0.0.1", 8080))
 
             // Maximum number of socket connections.
-            setMaxConnTotal(1000)
+            setMaxConnTotal(40960)
 
             // Maximum number of requests for a specific endpoint route.
-            setMaxConnPerRoute(100)
+            //在请求同一个host:port时，会复用已经建立的连接,允许同一个host:port最多有几个活跃连接
+            setMaxConnPerRoute(10240)
 
             // ...
         }
