@@ -71,7 +71,7 @@ class CachedProxy {
             //log.info("read local: $url")
             call.respondFile(file)
         } else {
-            val content = downloadFromUrl(url, absoluteFullName, absoluteDir).await()
+            val content = downloadFromUrlAsync(url, absoluteFullName, absoluteDir).await()
             call.respondBytes(content.bytes(),content.contentType,content.status)
         }
     }
@@ -87,7 +87,7 @@ class CachedProxy {
      *
      * TODO: save img file into redis or file server
      * */
-    private suspend fun downloadFromUrl(
+    private suspend fun downloadFromUrlAsync(
         url: String,
         absoluteFilename: String,
         absoluteDir: String
