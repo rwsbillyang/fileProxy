@@ -16,7 +16,8 @@ import org.slf4j.LoggerFactory
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.regex.Pattern
-
+import java.net.URLDecoder
+import java.io.UnsupportedEncodingException
 
 class FileInfo(val relativeDir: String, val filename: String, val extName: String = "")
 
@@ -33,7 +34,7 @@ class CachedProxy {
 
     //https://mp.weixin.qq.com/s/4HBgFyxQr3Fyzam5CjLmkw http://puui.qpic.cn/vpic/0/q3160lrh9sg.png/0
     //https://mp.weixin.qq.com/s/GShHXGJDzAtw0VNQTVzjyQ https://vpic.video.qq.com/9492804/l0669n6emgf.png
-    private val reg = "url=http(s)?://.*\\.(qpic|qlogo|qq)\\.(cn|com)/.+?"
+    private val reg = "http(s)?://.*\\.(qpic|qlogo|qq)\\.(cn|com)/.+?"
     //private val reg = "url=http(s)?://(mmbiz|mmsns)\\.(qpic|qlogo)\\.cn/.+?"
     /**
      * 下载时可能是并发，只有第一个到达的请求才会去真正下载
@@ -51,15 +52,23 @@ class CachedProxy {
         if (url.isNullOrBlank()) {
             throw HttpBadRequestException("wrong parameter")
         }
-        val queryStr: String = call.request.queryString()
-        val valid: Boolean = Pattern.matches(reg, queryStr)
+
+        val url2 = try {
+            URLDecoder.decode(url, "UTF-8")
+        }catch (e: UnsupportedEncodingException){
+            log.warn("fail to decode: $url")
+            throw HttpBadRequestException("wrong parameter")
+        }
+
+        //val queryStr: String = call.request.queryString()
+        val valid: Boolean = Pattern.matches(reg, url2)
         if (!valid) {
-            log.warn("not match reg RequestURL:{}, {} ", call.request.uri, queryStr)
+            log.warn("not match reg RequestURL:$url")
             throw HttpBadRequestException("not support url")
         }
 
         /*=============抽取文件信息=============*/
-        val info = extractFileInfoFromUrl(url)
+        val info = extractFileInfoFromUrl(url2)
 
         /*=============根据文件信息判断是否存在，若不存在尚需下载=============*/
         val absoluteDir: String = StringBuffer(CacheDir).append(info.relativeDir).toString()
@@ -71,7 +80,7 @@ class CachedProxy {
             //log.info("read local: $url")
             call.respondFile(file)
         } else {
-            val content = downloadFromUrlAsync(url, absoluteFullName, absoluteDir).await()
+            val content = downloadFromUrlAsync(url2, absoluteFullName, absoluteDir).await()
             call.respondBytes(content.bytes(),content.contentType,content.status)
         }
     }
