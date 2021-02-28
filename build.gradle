@@ -1,6 +1,9 @@
 buildscript {
     repositories {
+        mavenLocal()
+        mavenCentral()
         jcenter()
+        google()
     }
 
     dependencies {
@@ -47,9 +50,9 @@ compileTestKotlin {
 
 repositories {
     mavenLocal()
+    mavenCentral()
     jcenter()
-    maven { url 'https://kotlin.bintray.com/ktor' }
-    maven { url "https://kotlin.bintray.com/kotlinx" }
+    google()
 }
 
 
