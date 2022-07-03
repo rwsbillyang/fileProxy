@@ -37,9 +37,7 @@ fun Routing.fileProxyApi() {
     get("/px/taskNum") {
         cachedProxy.taskNum(call)
     }
-    get("/") {
-        call.respondText("OK from proxy")
-    }
+
 }
 
 
