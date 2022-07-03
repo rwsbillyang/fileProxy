@@ -2,13 +2,17 @@ package com.github.rwsbillyang.fileProxy
 
 
 import io.ktor.application.*
+import io.ktor.client.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.features.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.http.content.*
-import io.ktor.request.*
 import io.ktor.response.*
+import io.ktor.routing.*
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -19,8 +23,28 @@ import java.util.regex.Pattern
 import java.net.URLDecoder
 import java.io.UnsupportedEncodingException
 
-class FileInfo(val relativeDir: String, val filename: String, val extName: String = "")
 
+
+fun Routing.fileProxyApi() {
+    val cachedProxy = CachedProxy()
+
+    get("/image.php") {
+        cachedProxy.doProxy(call)
+    }
+    get("/px/img") {
+        cachedProxy.doProxy(call)
+    }
+    get("/px/taskNum") {
+        cachedProxy.taskNum(call)
+    }
+    get("/") {
+        call.respondText("OK from proxy")
+    }
+}
+
+
+class FileInfo(val relativeDir: String, val filename: String, val extName: String = "")
+class HttpClientException(val status: HttpStatusCode): Exception("status:$status")
 /**
  * 基于File的cache 请求file download代理
  * */
@@ -41,6 +65,61 @@ class CachedProxy {
      * */
     private val downloadTasks = ConcurrentHashMap<String, Deferred<ByteArrayContent>>()
 
+
+    private val client = HttpClient(CIO) {
+        install(HttpTimeout) {}
+        //https://ktor.io/docs/http-client-engines.html#jvm-and-android
+        engine {
+            maxConnectionsCount = 20480
+
+            endpoint {
+                /**
+                 * Maximum number of requests for a specific endpoint route.
+                 */
+                /**
+                 * Maximum number of requests for a specific endpoint route.
+                 */
+                maxConnectionsPerRoute = 10240
+
+                /**
+                 * Max size of scheduled requests per connection(pipeline queue size).
+                 */
+
+                /**
+                 * Max size of scheduled requests per connection(pipeline queue size).
+                 */
+                pipelineMaxSize = 20
+
+                /**
+                 * Max number of milliseconds to keep idle connection alive.
+                 */
+
+                /**
+                 * Max number of milliseconds to keep idle connection alive.
+                 */
+                keepAliveTime = 5000
+
+                /**
+                 * Number of milliseconds to wait trying to connect to the server.
+                 */
+
+                /**
+                 * Number of milliseconds to wait trying to connect to the server.
+                 */
+                connectTimeout = 10000
+
+                /**
+                 * Maximum number of attempts for retrying a connection.
+                 */
+
+                /**
+                 * Maximum number of attempts for retrying a connection.
+                 */
+                connectAttempts = 3
+            }
+        }
+    }
+
     suspend fun taskNum(call: ApplicationCall){
         call.respondText(downloadTasks.size.toString(), ContentType.Text.Plain, HttpStatusCode.OK)
     }
@@ -50,21 +129,28 @@ class CachedProxy {
 
         /*=============合法性检查=============*/
         if (url.isNullOrBlank()) {
-            throw HttpBadRequestException("wrong parameter")
+            log.error("wrong parameter: url=$url")
+            //throw HttpBadRequestException("wrong parameter")
+            call.respond(HttpStatusCode.BadRequest,"wrong parameter")
+            return
         }
 
         val url2 = try {
             URLDecoder.decode(url, "UTF-8")
         }catch (e: UnsupportedEncodingException){
             log.warn("fail to decode: $url")
-            throw HttpBadRequestException("wrong parameter")
+            //throw HttpBadRequestException("wrong parameter")
+            call.respond(HttpStatusCode.BadRequest,"fail to decode")
+            return
         }
 
         //val queryStr: String = call.request.queryString()
         val valid: Boolean = Pattern.matches(reg, url2)
         if (!valid) {
             log.warn("not match reg RequestURL:$url")
-            throw HttpBadRequestException("not support url")
+            //throw HttpBadRequestException("not support url")
+            call.respond(HttpStatusCode.BadRequest,"not support url")
+            return
         }
 
         /*=============抽取文件信息=============*/
@@ -80,8 +166,12 @@ class CachedProxy {
             //log.info("read local: $url")
             call.respondFile(file)
         } else {
-            val content = downloadFromUrlAsync(url2, absoluteFullName, absoluteDir).await()
-            call.respondBytes(content.bytes(),content.contentType,content.status)
+            try {
+                val content = downloadFromUrlAsync(url2, absoluteFullName, absoluteDir).await()
+                call.respondBytes(content.bytes(), content.contentType, content.status)
+            }catch (e:HttpClientException){
+                call.respond(e.status, "request upstream fails")
+            }
         }
     }
 
@@ -105,29 +195,28 @@ class CachedProxy {
         if (value != null) {
             value
         } else {
-            val fileDir = File(absoluteDir)
-            if (!fileDir.exists()) fileDir.mkdirs()
-
-            val deferred = async {
+            val deferred:Deferred<ByteArrayContent> = async {
                 val response: HttpResponse = client.get(url)
 
-                if (!response.status.isSuccess()) {
-                    log.info("download fail: $url")
-                    downloadTasks.remove(url)
-                    throw HttpClientException(response)
-                }else{
+                if (response.status.isSuccess()) {
                     val content = ByteArrayContent(response.readBytes())
 
-                    launch {
+                    response.launch(IO) {
+                        val fileDir = File(absoluteDir)
+                        if (!fileDir.exists()) fileDir.mkdirs()
                         val file = File(absoluteFilename)
                         file.writeBytes(content.bytes())
                         downloadTasks.remove(url)
                     }
                     content
+                }else{
+                    log.info("download fail, response.status=${response.status} , $url")
+                    downloadTasks.remove(url)
+                    throw HttpClientException(response.status)
                 }
             }
-
             downloadTasks[url] = deferred
+
             deferred
         }
     }
