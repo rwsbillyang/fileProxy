@@ -201,7 +201,6 @@ class CachedProxy {
 
                 if (response.status.isSuccess()) {
                     val content = ByteArrayContent(response.readBytes())
-
                     response.launch(IO) {
                         val fileDir = File(absoluteDir)
                         if (!fileDir.exists()) fileDir.mkdirs()
